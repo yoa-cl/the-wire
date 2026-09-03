@@ -1,0 +1,24 @@
+services:
+  the-wire:
+    build: .
+    container_name: the-wire
+    ports:
+      # Loopback-only on purpose. The app has no login screen and holds your
+      # API keys and OAuth tokens, so it must not be reachable from the network.
+      # Reach it through an SSH tunnel — see docs/DEPLOYMENT.md.
+      - "127.0.0.1:3000:3000"
+    volumes:
+      # Everything durable lives here: settings.json, control-center.sqlite,
+      # and the audience snapshot history. Back this folder up.
+      - ./data:/data
+    environment:
+      - CONTROL_CENTER_DATA_DIR=/data
+      - PORT=3000
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      # First boot builds nothing but does have to start Next; give it room.
+      start_period: 40s
+    restart: unless-stopped

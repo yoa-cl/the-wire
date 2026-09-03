@@ -76,6 +76,8 @@ npm run launch -- --no-open    # start without opening a browser
 npm run launch -- --port=3001  # use another local port
 ```
 
+Running this on a server rather than a laptop? See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for the Docker and systemd setups, including why the app refuses connections from other machines and how to reach it safely.
+
 ## First-run setup
 
 The Today page shows the four live areas and links directly to the right Settings section.

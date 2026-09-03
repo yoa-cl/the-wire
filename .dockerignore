@@ -1,0 +1,20 @@
+# Installed and built inside the image instead.
+node_modules
+.next
+out
+
+# Runtime data: settings, OAuth tokens, API keys, the SQLite database.
+# This must never be copied into an image layer.
+data
+.control-center
+
+# Not needed at build time.
+.git
+.github
+*.log
+*.tsbuildinfo
+.DS_Store
+
+# Local environment files stay local.
+.env*
+!.env.example

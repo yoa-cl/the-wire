@@ -17,3 +17,6 @@
 # typescript
 *.tsbuildinfo
 .gstack/
+
+# runtime data (settings, tokens, database) when running under Docker
+/data/

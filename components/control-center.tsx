@@ -75,6 +75,7 @@ import { SettingsInput } from "@/components/settings-input";
 import { AiProviderSettings } from "@/components/ai-provider-settings";
 import { DailySnapshot } from "@/components/daily-snapshot";
 import { AudienceInsights } from "@/components/audience-insights";
+import type { AudienceManualEntry } from "@/components/audience-refresh-actions";
 import type { AudienceHistorySeries } from "@/lib/audience-charts";
 import { AI_PROVIDER_LABELS, DEFAULT_LOCAL_AI_URLS, isAiReady } from "@/lib/ai-providers";
 import { sortFeedStories, selectNewsletterTopics, newsletterSourceOptions } from "@/lib/feed-priority";
@@ -344,7 +345,7 @@ function clearLiveDataCache() {
 
 function useLiveData<T>(
   endpoint: string,
-  refreshEveryMs = 15 * 60 * 1000,
+  refreshEveryMs = 4 * 60 * 60 * 1000,
   manualEndpoint = endpoint,
 ) {
   const initialData = liveDataCache.get(endpoint) as T | undefined;
@@ -866,7 +867,7 @@ function IndustryView({
 }) {
   const { data, loading, error, refresh, mutate } = useLiveData<LiveFeedResponse>(
     "/api/live/industry",
-    15 * 60 * 1000,
+    4 * 60 * 60 * 1000,
     "/api/live/industry?refresh=1",
   );
   const [query, setQuery] = useState("");
@@ -1137,7 +1138,7 @@ function MentionsView({
 }) {
   const { data, loading, error, refresh, mutate } = useLiveData<LiveFeedResponse>(
     "/api/live/mentions",
-    15 * 60 * 1000,
+    4 * 60 * 60 * 1000,
     "/api/live/mentions?refresh=1",
   );
   const [view, setView] = useState<"active" | "archive">("active");
@@ -1544,12 +1545,14 @@ function cachedMetricLabel(item: AudienceMetric) {
 }
 
 function AudienceView({ openSettings }: { openSettings: () => void }) {
-  const { data, loading, error, refresh } = useLiveData<{
+  const { data, loading, error, refresh, mutate } = useLiveData<{
     configured: boolean;
     checkedAt: string;
     items: AudienceMetric[];
     history?: AudienceHistorySeries[];
-  }>("/api/live/audience", 15 * 60 * 1000, "/api/live/audience?refresh=1");
+    manual?: Record<string, AudienceManualEntry>;
+    staggerMs?: number;
+  }>("/api/live/audience", 4 * 60 * 60 * 1000, "/api/live/audience?refresh=1");
   const items = data?.items || [];
   return (
     <div className="view">
@@ -1580,7 +1583,14 @@ function AudienceView({ openSettings }: { openSettings: () => void }) {
         />
       ) : (
         <>
-          <AudienceInsights items={items} history={data.history} checkedAt={data.checkedAt} />
+          <AudienceInsights
+            items={items}
+            history={data.history}
+            checkedAt={data.checkedAt}
+            manual={data.manual}
+            staggerMs={data.staggerMs}
+            onDataChange={(payload) => mutate(() => payload)}
+          />
           {error && <ErrorNotice errors={[error]} />}
           <div className="platform-table reveal delay-2">
             <div className="platform-head">
@@ -1678,7 +1688,7 @@ function NewslettersView({
 }) {
   const { data, loading, error, refresh, mutate } = useLiveData<NewsletterFeedResponse>(
     "/api/live/newsletters",
-    15 * 60 * 1000,
+    4 * 60 * 60 * 1000,
     "/api/live/newsletters?refresh=1",
   );
   const [view, setView] = useState<"active" | "archive" | "history">("active");

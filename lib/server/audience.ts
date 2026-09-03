@@ -61,7 +61,7 @@ const linkedInHeaders = {
   "Upgrade-Insecure-Requests": "1",
 };
 
-async function readSnapshots(): Promise<AudienceSnapshotHistory> {
+export async function readSnapshots(): Promise<AudienceSnapshotHistory> {
   try {
     return parseAudienceSnapshots(
       JSON.parse(await readFile(snapshotsPath(), "utf8")) as unknown,
@@ -80,7 +80,7 @@ export async function readAudienceHistory(settings: StoredSettings) {
   return configuredAudienceHistory(settings.audience.accounts, await readSnapshots());
 }
 
-async function writeSnapshots(snapshots: AudienceSnapshotHistory) {
+export async function writeSnapshots(snapshots: AudienceSnapshotHistory) {
   const target = snapshotsPath();
   await mkdir(path.dirname(target), { recursive: true, mode: 0o700 });
   const temporary = `${target}.tmp`;
@@ -94,7 +94,7 @@ async function fetchJson<T>(url: string, headers?: HeadersInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-function usernameFor(account: Account) {
+export function usernameFor(account: Account) {
   const fromProfile = publicProfileHandle(account.platform, account.profileUrl);
   if (fromProfile) return fromProfile;
   const fallbackUrl = resolvePublicProfileUrl(account.platform, "", account.username);
@@ -318,7 +318,7 @@ async function collectWithCredential(account: Account): Promise<CollectedAccount
   throw new Error("This platform does not have an API fallback configured.");
 }
 
-async function collectAccount(account: Account) {
+export async function collectAccount(account: Account) {
   try { return await collectPublicAccount(account); } catch (publicError) {
     if (account.credential) {
       try { return await collectWithCredential(account); } catch (apiError) {
@@ -329,7 +329,7 @@ async function collectAccount(account: Account) {
   }
 }
 
-function cachedMetric(account: Account, prior: AudienceAccountHistory): AudienceMetric {
+export function cachedMetric(account: Account, prior: AudienceAccountHistory): AudienceMetric {
   const platformName = account.platform[0].toUpperCase() + account.platform.slice(1);
   const cacheLabel = account.platform === "linkedin" ? "daily cache" : "cached";
   const latest = prior.latest;

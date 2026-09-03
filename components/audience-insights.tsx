@@ -15,6 +15,12 @@ import {
   type AudienceHistorySeries,
 } from "@/lib/audience-charts";
 import styles from "./audience-insights.module.css";
+import {
+  AudienceAccountActions,
+  AudienceRefreshActions,
+  type AudienceManualEntry,
+  type AudiencePayload,
+} from "./audience-refresh-actions";
 
 const EMPTY_HISTORY: AudienceHistorySeries[] = [];
 const PLATFORMS: Record<AudiencePlatform, { name: string; symbol: string }> = {
@@ -180,10 +186,13 @@ function AudienceMix({ items }: { items: AudienceMetric[] }) {
   </aside>;
 }
 
-export function AudienceInsights({ items, history = EMPTY_HISTORY, checkedAt }: {
+export function AudienceInsights({ items, history = EMPTY_HISTORY, checkedAt, manual, staggerMs, onDataChange }: {
   items: AudienceMetric[];
   history?: AudienceHistorySeries[];
   checkedAt?: string;
+  manual?: Record<string, AudienceManualEntry>;
+  staggerMs?: number;
+  onDataChange?: (payload: AudiencePayload) => void;
 }) {
   const [days, setDays] = useState<AudienceChartRange>(7);
   const [mode, setMode] = useState<AudienceChartMode>("growth");
@@ -197,6 +206,8 @@ export function AudienceInsights({ items, history = EMPTY_HISTORY, checkedAt }: 
   if (!items.length) return null;
 
   return <section className={styles.insights} aria-label="Audience growth insights">
+    <AudienceRefreshActions items={items} staggerMs={staggerMs} onUpdated={onDataChange} />
+
     <div className={styles.statsRow}>
       <div className={styles.stat}><span><Users size={14} aria-hidden /> Combined platform totals</span><strong>{summary.total === null ? "—" : number.format(summary.total)}</strong><p>{summary.knownCount} of {items.length} accounts with verified counts{summary.lastKnownCount ? ` · ${summary.lastKnownCount} last-known` : ""}</p></div>
       <div className={styles.stat}><span><Activity size={14} aria-hidden /> 24–36h net change</span><strong className={changeTone(summary.change)}>{summary.change === null ? "Building history" : signed(summary.change)}</strong><p>{summary.comparisonCount ? `${summary.comparisonCount} accounts with a comparable baseline` : "A day-old reading is needed for an honest comparison"}</p></div>
@@ -229,6 +240,7 @@ export function AudienceInsights({ items, history = EMPTY_HISTORY, checkedAt }: 
         <MiniChart series={entry} />
         <div className={styles.cardFoot}><span>{entry.points.length ? `${entry.points.length} saved readings` : "History begins with your first check"}</span>{entry.change !== null && <b className={changeTone(entry.change)}>{signed(entry.change)} observed</b>}</div>
         <p className={styles.verifiedAt}>{available && Number.isFinite(verifiedTime) ? `Last verified ${fullDate.format(verifiedTime)}` : "No verified public count yet"}{entry.hasGaps ? " · gaps in history" : ""}</p>
+        <AudienceAccountActions item={item} manual={manual?.[item.id]} onUpdated={onDataChange} />
       </article>;
     })}</div>
 

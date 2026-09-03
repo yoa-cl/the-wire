@@ -1,6 +1,6 @@
 import "server-only";
 
-const COLLECTION_INTERVAL_MS = 15 * 60 * 1000;
+const COLLECTION_INTERVAL_MS = 4 * 60 * 60 * 1000;
 const STARTUP_DELAY_MS = 5_000;
 
 declare global {
@@ -22,7 +22,6 @@ async function refreshAllCollectors() {
     await Promise.allSettled([
       "/api/live/industry?refresh=1",
       "/api/live/mentions?refresh=1",
-      "/api/live/audience",
       "/api/live/newsletters?refresh=1",
     ].map(async (path) => {
       const response = await fetch(`${baseUrl}${path}`, {

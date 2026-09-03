@@ -16,6 +16,7 @@ import { initializeBriefStore } from "@/lib/brief-store";
 import { initializeIndustryStore } from "@/lib/industry-store";
 import { initializeCollectorCache } from "@/lib/collector-cache";
 import { initializeNewsletterStore } from "@/lib/newsletter-store";
+import { initializeAudienceManualStore } from "@/lib/audience-manual-store";
 
 export { setContentArchived } from "@/lib/archive-store";
 export type { ContentCategory } from "@/lib/archive-store";
@@ -63,6 +64,7 @@ export function getDatabase() {
         ),
       ),
     );
+    initializeAudienceManualStore(initialized);
     if (schema.user_version < 6) initialized.exec("PRAGMA user_version = 6;");
     chmodSync(databasePath, 0o600);
     globalThis.controlCenterDatabase = initialized;

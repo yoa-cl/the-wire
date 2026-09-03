@@ -1,0 +1,68 @@
+/* The Wire: manual and granular audience refresh controls. */
+
+.globalBar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px 20px; align-items: center; margin-bottom: 18px; padding: 17px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.globalIntro { min-width: 0; }
+.globalTitle { margin: 0 0 5px; font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--coral-dark); }
+.globalNote { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.globalActions { display: flex; flex-shrink: 0; gap: 8px; }
+
+.primaryButton { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 8px 15px; border: 1px solid var(--line-dark); border-radius: 8px; background: var(--card); color: var(--ink); font-size: 11px; font-weight: 600; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.primaryButton:hover:not(:disabled) { border-color: var(--teal); background: var(--deep-hover); }
+.primaryButton:disabled { opacity: .62; cursor: progress; }
+
+.progress { grid-column: 1 / -1; display: flex; align-items: center; gap: 11px; color: var(--muted); font-size: 10px; }
+.progressTrack { flex: 1; min-width: 0; height: 4px; border-radius: 2px; background: var(--deep-soft); overflow: hidden; }
+.progressFill { display: block; height: 100%; border-radius: 2px; background: var(--teal); transition: width 1s linear; }
+
+.rowActions { margin-top: 12px; padding: 11px 12px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--deep-soft); }
+/* Stale rows are tinted, not blocked — the data is still shown and still usable. */
+.rowActions[data-stale="true"] { border-color: var(--watch-border); background: var(--watch-bg); }
+.rowHead { display: flex; align-items: center; justify-content: space-between; gap: 9px; margin-bottom: 9px; }
+
+.ghostButton { display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 5px 10px; border: 1px solid var(--line-dark); border-radius: 7px; background: var(--card); color: var(--ink); font-size: 10px; font-weight: 600; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.ghostButton:hover:not(:disabled) { border-color: var(--teal); background: var(--deep-hover); }
+.ghostButton:disabled { opacity: .62; cursor: progress; }
+
+.staleChip { display: inline-flex; align-items: center; gap: 5px; color: var(--watch); font-family: var(--mono); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; }
+
+.entryRow { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.entryInput { flex: 1 1 92px; min-width: 0; min-height: 30px; padding: 6px 9px; border: 1px solid var(--line-dark); border-radius: 7px; background: var(--card); color: var(--ink); font-family: var(--mono); font-size: 11px; font-variant-numeric: tabular-nums; }
+.entryInput:focus-visible { outline: 2px solid var(--teal); outline-offset: 1px; }
+.parsedValue { color: var(--faint); font-family: var(--mono); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.deltaBadge { display: inline-flex; align-items: center; padding: 3px 7px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); color: var(--muted); font-family: var(--mono); font-size: 9px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.up { color: var(--positive); border-color: var(--positive-border); }
+.down { color: var(--danger); border-color: var(--watch-border); }
+.flat { color: var(--muted); }
+
+.saveButton { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 6px 12px; border: 1px solid var(--line-dark); border-radius: 7px; background: var(--card); color: var(--ink); font-size: 10px; font-weight: 600; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.saveButton:hover:not(:disabled) { border-color: var(--teal); background: var(--deep-hover); }
+.saveButton:disabled { opacity: .5; cursor: not-allowed; }
+
+.noteInput { display: block; width: 100%; margin-top: 7px; min-height: 28px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--card); color: var(--ink); font-size: 10px; }
+.noteInput:focus-visible { outline: 2px solid var(--teal); outline-offset: 1px; }
+.noteInput::placeholder { color: var(--faint); }
+
+.status { display: flex; align-items: flex-start; gap: 5px; margin: 8px 0 0; font-size: 10px; line-height: 1.55; }
+.statusError { color: var(--danger); }
+.statusDone { color: var(--positive); }
+
+.replaceButton { margin-top: 7px; min-height: 27px; padding: 5px 10px; border: 1px solid var(--watch-border); border-radius: 7px; background: var(--watch-bg); color: var(--watch); font-size: 10px; font-weight: 600; cursor: pointer; }
+.replaceButton:disabled { opacity: .6; cursor: progress; }
+
+.manualNote { margin: 8px 0 0; color: var(--faint); font-size: 10px; line-height: 1.55; }
+
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+.spin { animation: audienceSpin 1s linear infinite; }
+@keyframes audienceSpin { to { transform: rotate(360deg); } }
+
+@media (max-width: 800px) {
+  .globalBar { grid-template-columns: minmax(0, 1fr); }
+  .globalActions { justify-content: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation: none; }
+  .progressFill, .primaryButton, .ghostButton, .saveButton { transition: none; }
+}

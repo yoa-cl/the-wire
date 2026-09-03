@@ -1,16 +1,65 @@
-# Control Center
+# The Wire
 
 A local-first business dashboard for industry updates, strict brand mentions, newsletter monitoring, public audience totals, reminders, and tasks.
 
 Every fresh install starts empty. There are no built-in names, companies, websites, social profiles, API keys, or demo records. Each user tailors the dashboard to their own niche in **Settings**.
 
+> **The Wire is a custom fork of [mreflow/control-center](https://github.com/mreflow/control-center).** It keeps the upstream feature set and rewrites how audience metrics are collected, so that unauthenticated public-profile checks stop tripping platform anti-bot defences. See [What The Wire changes](#what-the-wire-changes).
+
+## What The Wire changes
+
+Upstream, a background scheduler woke every 15 minutes and hit every collector — including `/api/live/audience`, which scraped every configured social profile **concurrently**. A burst of simultaneous signed-out requests from one IP is exactly the pattern platforms rate-limit and ban. This fork decouples audience collection from that loop and puts it back under human control.
+
+| Behaviour | Upstream | The Wire |
+| --------- | -------- | -------- |
+| Background collector interval | 15 minutes | **4 hours** |
+| Audience in the background loop | Yes, every cycle | **No — removed entirely** |
+| Bulk audience refresh | All accounts at once | **Sequential, 10s between accounts** |
+| Single-account refresh | Not available | **Per-account, on demand** |
+| Opening the Audience tab | Triggered scraping | **Reads local storage, no network** |
+| Manual entry | Not available | **Validated, deduplicated, note-capable** |
+
+**Nothing scrapes a profile unless you ask it to.** A plain `GET /api/live/audience` now returns what is already on disk without making a single outbound request. Scraping happens on exactly two paths:
+
+- `GET /api/live/audience?refresh=1` — the **Refresh all** button. Accounts are visited one at a time with a deliberate 10-second pause between each. A sweep of seven accounts takes roughly a minute and a half, and the button reports its progress rather than appearing to hang.
+- `GET /api/live/audience?platform=youtube&handle=your-handle` — a **single-account refresh**. Only that profile is contacted; every other account is served from storage and its history is left untouched. `&id=<account id>` is accepted as an unambiguous fallback when a handle has been renamed.
+
+Each account in a sweep is isolated. If one request times out or a platform returns a block page, that account is skipped, its stored history is left exactly as it was, its previous value stays on screen labelled as last known, and the sweep continues to the next account. One bad profile never costs you the other six.
+
+### Manual entry
+
+Some platforms simply will not hand a signed-out visitor a number. Rather than showing a permanent gap, every account card carries a smart input:
+
+- **Shorthand parsing.** `10.5k`, `1,500`, `2.4m`, and `1 500` all resolve to whole integers, so a typo cannot reach the API as `NaN`. The parsed value is echoed next to the field before you commit.
+- **Live delta.** As you type, an inline badge shows the net change and percentage against the last recorded reading — no need to save first to see what a number means.
+- **Anomaly checks.** A jump of 50% or more, a drop of 20% or more, or any 10× swing raises a confirmation prompt. Decreases are treated as legitimate — purges and unfollows happen — so the prompt is a check, never a block.
+- **One entry per account per day.** A second manual entry for the same account on the same local calendar day is rejected with `409`, and the UI offers an explicit **Replace today's entry** action. Scraped readings never block a manual entry.
+- **Optional note.** Attach a short line recording where a number came from; it is stored alongside the reading.
+- **Stale highlighting.** An account with no reading in over 30 days is tinted amber with a day count, so a quietly-failing profile is visible instead of silently rotting.
+- **Keyboard.** `Enter` saves from either the count or the note field.
+
+Manual entries never make a network request. `POST /api/live/audience` validates the value, rejects negatives and non-numeric input, and writes straight to local storage.
+
+### Where a reading is stored
+
+Audience readings live in two places, on purpose:
+
+- `snapshots.json` receives the numeric sample, so a hand-entered value flows through the existing charts, the 24–36 hour baseline, and the recorded-values table exactly like a scraped one. A manual value takes precedence over a scraped sample in the same 12-hour bucket.
+- `control-center.sqlite` gains an `audience_manual_entries` table holding the manual ledger — account, value, note, local calendar day, and timestamp. The calendar day carries a uniqueness constraint, which is what enforces the one-per-day rule.
+
+The table is created additively and the schema version is unchanged, so the same data directory still opens in an upstream build; it simply ignores the extra table.
+
+### A note on client polling
+
+The dashboard's own polling also moved from 15 minutes to 4 hours. While the Audience tab is open, that 4-hour poll performs a staggered sweep — sequential, 10 seconds apart, the same respectful path as the button. Close the tab and nothing is collected at all.
+
 ## Install and open
 
-Requirements: [Node.js 24.19 or newer](https://nodejs.org/en/download), npm, and a modern desktop browser.
+Requirements: [Node.js 24.19 or newer](https://nodejs.org/en/download), npm, and a modern desktop browser. Node 24 is not optional: the app uses the built-in `node:sqlite` module, which older releases do not provide.
 
 ```bash
-git clone https://github.com/mreflow/control-center.git
-cd control-center
+git clone https://github.com/yoa-cl/the-wire.git
+cd the-wire
 npm run launch
 ```
 
@@ -38,7 +87,9 @@ The Today page shows the four live areas and links directly to the right Setting
 5. **Newsletters (optional):** connect any Gmail account with a read-only OAuth client, choose the Gmail search query, and configure AI curation to extract and rank news.
 6. **Daily brief:** choose how many Industry, Mention, and Newsletter stories appear on Today. Each section can show 1–10 stories or be turned off.
 
-Collectors run shortly after startup, every 15 minutes while the app remains open, and when **Refresh** is pressed. Industry, Mentions, and Newsletters open from their last saved collector snapshot, so moving between tabs does not repeat public web or Gmail collection.
+Collectors run shortly after startup, every 4 hours while the app remains open, and when **Refresh** is pressed. Industry, Mentions, and Newsletters open from their last saved collector snapshot, so moving between tabs does not repeat public web or Gmail collection.
+
+Audience is deliberately excluded from that background loop. It is refreshed only when you press **Refresh all** or an individual account's **Refresh**, or when you record a reading by hand — see [What The Wire changes](#what-the-wire-changes).
 
 ## Today and the daily brief
 
@@ -89,9 +140,13 @@ Supported public profiles: YouTube, X, Instagram, Facebook, LinkedIn, Threads, a
 
 Public pages are checked first and do not require platform API keys. Optional official credentials remain collapsed under advanced settings for providers that support a fallback. Successful metrics must match the configured account identity; a count from an unrelated page is rejected.
 
+**Collection is manual in The Wire.** Opening this tab reads saved readings and contacts nobody. Use **Refresh all** for a staggered sweep of every account, an account card's **Refresh** for one profile, or the card's input to record a number by hand. A fresh install therefore shows every account as *Waiting* until the first refresh — that is the decoupling working, not a failure. Full details are in [What The Wire changes](#what-the-wire-changes).
+
 Public collection is provider-controlled and best effort. A platform can change or block signed-out metadata without notice. A failed check is shown as unavailable or limited, never as a false zero; a prior verified value is clearly labeled as last known. Combined totals are sums across platforms, not deduplicated people.
 
 Follower and subscriber growth is measured against the newest comparable sample from 24–36 hours earlier. The app keeps one historical anchor per 12-hour bucket, so hourly/manual refreshes update the live total without becoming a misleading baseline. Until a true yesterday sample exists, the UI says **Baseline**. Post, video, and thread counts are shown only as separate content metadata; they are never used as audience growth.
+
+Hand-entered readings join the same history and are charted like any other sample. Because the app can no longer be relied on to check on its own schedule, an account with no reading for more than 30 days is tinted amber on its card with a day count.
 
 The Audience page includes platform-colored account cards, a platform mix, and interactive 7-day/30-day charts. Switch between total audience and change over the selected range, inspect individual readings, or open the exact-values table. Charts use only verified saved readings: a new account starts with a point, not invented historical growth, and long gaps or last-known counts are labeled.
 
@@ -161,8 +216,8 @@ Existing installations that already contain `./.control-center` continue using t
 Stored files include:
 
 - `settings.json`: configuration, OAuth tokens, and any saved AI/provider keys, owner-readable on POSIX systems;
-- `control-center.sqlite`: raw Industry discoveries, saved collector snapshots, surfaced content, extracted newsletter issue/link metadata, archive state, reminders, and tasks;
-- snapshot JSON files: sitemap and audience baselines.
+- `control-center.sqlite`: raw Industry discoveries, saved collector snapshots, surfaced content, extracted newsletter issue/link metadata, archive state, reminders, tasks, and The Wire's `audience_manual_entries` ledger of hand-recorded readings and their notes;
+- snapshot JSON files: sitemap and audience baselines, including hand-entered audience samples.
 
 Secrets never return through the Settings API. They remain local, but they are not encrypted at rest. Protect the operating-system account and any backups.
 
@@ -192,6 +247,18 @@ npm run launch
 ```
 
 The setup path compares the installed dependency tree to the committed lockfile and performs a clean install when it changes. User data is outside a fresh checkout, so replacing a ZIP with a newer version does not replace that data directory.
+
+### Pulling in upstream changes
+
+The Wire tracks `mreflow/control-center` as a second remote:
+
+```bash
+git remote add upstream https://github.com/mreflow/control-center.git   # once
+git fetch upstream
+git merge upstream/main
+```
+
+The fork is built to keep this cheap. Almost all of the new behaviour lives in files upstream does not have — `lib/server/audience-refresh.ts`, `lib/audience-manual-store.ts`, `components/audience-refresh-actions.tsx` and its stylesheet. Edits to shared files were kept deliberately small: a changed constant in `lib/server/scheduler.ts`, five added `export` keywords in `lib/server/audience.ts`, one added line in `lib/server/database.ts`, and a handful of props in `components/audience-insights.tsx` and `components/control-center.tsx`. Expect conflicts only where upstream touches those same lines.
 
 ## Development and verification
 

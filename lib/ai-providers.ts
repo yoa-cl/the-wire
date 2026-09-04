@@ -69,13 +69,19 @@ export function localAiBaseUrl(provider: LocalAiProvider, input?: string) {
   try { url = new URL(raw); } catch {
     throw new Error("Enter a local server address such as http://127.0.0.1:1234.");
   }
+  // The Wire: upstream restricted this to loopback so that "local model" could
+  // promise the data never left the machine. This fork allows an operator-chosen
+  // host, so a self-hosted Ollama or LM Studio can run on another box on the same
+  // network. Every other part of the guard is kept — scheme, no credentials, no
+  // query or fragment, and a short allowlist of paths. See docs/FORK_NOTES.md.
   if (!["http:", "https:"].includes(url.protocol) ||
-      !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname.toLowerCase()) ||
+      !url.hostname ||
       url.username || url.password || url.search || url.hash ||
       !["/", "", "/v1", "/v1/", "/api", "/api/"].includes(url.pathname)) {
-    throw new Error("Local AI servers must use localhost, 127.0.0.1, or [::1], with no credentials, query, or custom path. Remote endpoints are not supported.");
+    throw new Error("Enter an AI server address such as http://127.0.0.1:11434 or http://192.168.1.50:11434, with no credentials, query, or custom path.");
   }
-  // Pin localhost to a numeric loopback address; never resolve a configurable hostname.
+  // Pin localhost to a numeric loopback address so the default cannot be
+  // redirected by a hosts file or resolver change.
   if (url.hostname === "localhost") url.hostname = "127.0.0.1";
   return url.origin;
 }

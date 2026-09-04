@@ -213,6 +213,87 @@ typing sees. History itself is stored as UTC timestamps.
 
 ---
 
+---
+
+## Later changes
+
+Decisions made after the original specification, as running the fork on a real
+server surfaced things the plan could not have anticipated.
+
+### The OAuth redirect URI follows the Host header
+
+**Problem.** Connecting Gmail failed with `Error 400: invalid_request`, and the
+error detail showed `redirect_uri=http://0.0.0.0:3000/api/auth/google/callback`.
+Google rejects `0.0.0.0` outright — it is not a routable host.
+
+Both OAuth routes built their URLs with `new URL(path, request.url)`, and Next
+derives `request.url` from the address the server is **bound to**. Upstream binds
+`127.0.0.1`, which happens to be correct. A container must bind `0.0.0.0` for
+Docker to route traffic to it, so that address leaked into the redirect URI. The
+callback had the same bug twice: it would also have bounced the browser back to
+`http://0.0.0.0:3000/` after authorising.
+
+**Change.** `lib/server/request-origin.ts` builds URLs from the `Host` header the
+browser actually sent. Both `app/api/auth/google/start/route.ts` and
+`app/api/auth/google/callback/route.ts` use it.
+
+The Host header is safe to trust here: `proxy.ts` rejects any request to
+`/api/*` whose Host is not loopback before a route handler runs.
+
+This is a genuine bug rather than a preference, and it affects anyone running
+upstream in a container or behind a proxy.
+
+> **Operational note.** Google's OAuth policy permits `http://localhost` for Web
+> application clients but bans loopback *IP* addresses. Browse the dashboard on
+> `http://localhost:3000` when connecting Gmail, and register
+> `http://localhost:3000/api/auth/google/callback` as the redirect URI.
+
+### AI endpoints may be on another machine
+
+**Upstream behaviour.** `localAiBaseUrl()` in `lib/ai-providers.ts` accepted only
+`localhost`, `127.0.0.1` or `[::1]`, rejecting everything else with *"Remote
+endpoints are not supported."*
+
+**Why upstream did that.** It is not an oversight. It backs a product guarantee
+stated in the README — that a "local model" means the data never leaves the
+computer — and the code comment (*"never resolve a configurable hostname"*) shows
+the second motive: a settings field that can point anywhere is a classic
+server-side request forgery hole. Upstream is designed as a single-machine app
+that launches a browser on the computer it runs on, and under that assumption the
+restriction costs nothing.
+
+**Why this fork lifts it.** The Wire runs in a container on a headless server,
+with Ollama on a *different* machine on the same LAN. Under the upstream rule
+that configuration is impossible: `127.0.0.1` inside the container is the
+container's own loopback, not the host's, and not another box at all.
+
+Both of upstream's motives were weighed rather than dismissed:
+
+- *The privacy guarantee* concerns data leaving the operator's control. An
+  inference server the operator owns, on their own network, is a different
+  situation from an arbitrary internet endpoint. The README now states plainly
+  that a non-loopback address sends content to that machine, so the trade-off is
+  visible rather than silent.
+- *The SSRF protection* assumes an attacker who can write settings but cannot
+  otherwise reach the machine. That actor does not exist in this deployment: the
+  app has no login and is reachable only through the operator's own SSH tunnel,
+  so anyone able to change that setting can already run commands on the host.
+
+**Change.** The hostname allowlist is removed. Everything else about the guard is
+kept — HTTP/HTTPS only, no credentials in the URL, no query string or fragment,
+and a short allowlist of paths (`/`, `/v1`, `/api`). `localhost` is still pinned
+to `127.0.0.1` so the default cannot be redirected by a hosts file or resolver
+change. `tests/ai-providers.test.ts` was updated to assert the new boundary,
+including that credentials, query strings, fragments, custom paths and non-HTTP
+schemes are all still refused.
+
+**If this fork ever gains multiple users**, revisit it. The relaxation is safe
+because exactly one trusted person can reach the settings page; that premise is
+what makes it safe, not the code. Adding authentication is the mitigation, not a
+conflict.
+
+---
+
 ## What shipped
 
 Implementation commit: `601469b`.
@@ -226,6 +307,7 @@ with:
 | `lib/audience-manual-store.ts` | The `audience_manual_entries` SQLite table |
 | `components/audience-refresh-actions.tsx` | Global and per-account controls, smart input |
 | `components/audience-refresh-actions.module.css` | Its styles |
+| `lib/server/request-origin.ts` | Builds URLs from the Host header, not the bound address |
 
 Changed files, kept as small as possible:
 
@@ -237,6 +319,9 @@ Changed files, kept as small as possible:
 | `app/api/live/audience/route.ts` | Rewritten: targeted GET, staggered GET, new POST |
 | `lib/server/audience.ts` | Five `export` keywords added. No logic changed |
 | `lib/server/database.ts` | One line, registering the new table |
+| `app/api/auth/google/*/route.ts` | Redirect URIs built from the Host header |
+| `lib/ai-providers.ts` | AI endpoint host restriction lifted |
+| `tests/ai-providers.test.ts` | Asserts the new AI endpoint boundary |
 
 `lib/server/audience.ts` was deliberately left alone beyond making five existing
 helpers importable. `collectAudience()` and `collectAudienceNow()` are byte-for-

@@ -40,11 +40,17 @@ test("model override accepts Default and rejects email autofill, URLs, or prompt
     assert.throws(() => cleanAiModelOverride(value), /dropdown/);
 });
 
-test("local endpoints are pinned to loopback with no credentials, redirects or arbitrary paths", () => {
+test("AI endpoints accept an operator-chosen host with no credentials, redirects or arbitrary paths", () => {
   assert.equal(localAiBaseUrl("lmstudio"), "http://127.0.0.1:1234");
   assert.equal(localAiBaseUrl("ollama", "http://localhost:11434/api"), "http://127.0.0.1:11434");
   assert.equal(localAiBaseUrl("lmstudio", "http://[::1]:1234/v1/"), "http://[::1]:1234");
-  for (const url of ["https://api.example.com", "http://192.168.1.2:1234", "http://127.0.0.1.evil.test", "http://127.0.0.1:1234/?token=secret", "http://user:pass@localhost:1234", "file:///etc/passwd", "http://localhost:1234/admin", "http://localhost:1234#secret", "person@example.com"])
+  // The Wire allows an inference server on another machine; upstream required loopback.
+  assert.equal(localAiBaseUrl("ollama", "http://192.168.1.50:11434"), "http://192.168.1.50:11434");
+  assert.equal(localAiBaseUrl("ollama", "http://ollama.lan:11434/api"), "http://ollama.lan:11434");
+  assert.equal(localAiBaseUrl("lmstudio", "https://models.example.com/v1"), "https://models.example.com");
+  // Everything the guard still rejects: credentials, query, fragment, custom
+  // paths, non-HTTP schemes, and anything that is not a URL at all.
+  for (const url of ["http://127.0.0.1:1234/?token=secret", "http://user:pass@localhost:1234", "file:///etc/passwd", "http://localhost:1234/admin", "http://localhost:1234#secret", "person@example.com"])
     assert.throws(() => localAiBaseUrl("lmstudio", url));
 });
 

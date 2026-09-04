@@ -3658,7 +3658,7 @@ export function ControlCenter() {
           </span>
           <span>
             <b>{settings.general.workspaceName.toUpperCase()}</b>
-            <small>CONTROL CENTER</small>
+            <small>SIGNAL DESK</small>
           </span>
         </div>
         <button

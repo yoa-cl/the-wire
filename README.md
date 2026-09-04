@@ -53,6 +53,8 @@ The table is created additively and the schema version is unchanged, so the same
 
 The dashboard's own polling also moved from 15 minutes to 4 hours. While the Audience tab is open, that 4-hour poll performs a staggered sweep — sequential, 10 seconds apart, the same respectful path as the button. Close the tab and nothing is collected at all.
 
+For why the fork was built this way, the original specification, and where the finished work departed from it, see [docs/FORK_NOTES.md](docs/FORK_NOTES.md).
+
 ## Install and open
 
 Requirements: [Node.js 24.19 or newer](https://nodejs.org/en/download), npm, and a modern desktop browser. Node 24 is not optional: the app uses the built-in `node:sqlite` module, which older releases do not provide.

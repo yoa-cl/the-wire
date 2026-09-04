@@ -115,7 +115,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .brand-mark { width: 34px; height: 34px; display: grid; place-items: center; color: white; background: var(--inverse); border-radius: 50% 50% 45% 55%; transform: rotate(-4deg); }
 .brand-lockup > span:last-child { display: flex; flex-direction: column; line-height: 1; }
 .brand-lockup b { font-family: var(--serif); font-size: 18px; letter-spacing: .08em; }
-.brand-lockup small { margin-top: 4px; color: var(--muted); font-family: var(--mono); font-size: 8px; letter-spacing: .16em; }
+.brand-lockup small { margin-top: 4px; color: var(--muted); font-family: var(--mono); font-size: 8px; letter-spacing: .16em; text-align: right; }
 .main-nav { display: flex; align-items: stretch; justify-content: center; height: 72px; overflow-x: auto; scrollbar-width: none; }
 .main-nav button { position: relative; display: flex; align-items: center; gap: 7px; height: 100%; padding: 0 13px; border: 0; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .main-nav button::after { content: ""; position: absolute; left: 13px; right: 13px; bottom: -1px; height: 3px; background: var(--coral); transform: scaleX(0); transition: transform .2s ease; }

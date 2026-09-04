@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Control Center",
+  title: "The Wire",
   description: "A self-hosted dashboard for signals, mentions, newsletters, audience, reminders, and tasks.",
 };
 

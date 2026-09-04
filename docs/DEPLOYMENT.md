@@ -146,34 +146,12 @@ or a plain reverse proxy all fail the same way — the page shell loads and ever
 API call returns 403. This is intentional. The app has no login screen and holds
 your API keys and Gmail OAuth tokens in plaintext on disk.
 
-### Set up an SSH alias once
+### Open a tunnel
 
-On your workstation, add a dedicated entry to `~/.ssh/config`
-(`C:\Users\<you>\.ssh\config` on Windows) beside your normal one:
-
-```
-Host myserver
-    HostName 192.168.1.100
-    User youruser
-    IdentityFile ~/.ssh/id_ed25519
-    IdentitiesOnly yes
-
-Host wire
-    HostName 192.168.1.100
-    User youruser
-    IdentityFile ~/.ssh/id_ed25519
-    IdentitiesOnly yes
-    LocalForward 3000 127.0.0.1:3000
-```
-
-A separate `wire` alias keeps the forward off your everyday shell. Putting
-`LocalForward` on the entry you use for everything means a second concurrent
-session prints `bind: Address already in use`.
-
-### Open the tunnel
+From your workstation, substituting your own username and the machine's address:
 
 ```bash
-ssh wire
+ssh -L 3000:127.0.0.1:3000 you@your-server
 ```
 
 Leave that session open and browse to **http://127.0.0.1:3000**.
@@ -183,10 +161,30 @@ locks are satisfied with no code changes.
 
 - Use `127.0.0.1`, not `localhost` — on some systems `localhost` resolves to
   IPv6 `::1` first and the tunnel will not answer.
-- For a tunnel with no shell attached: `ssh -f -N wire`. It backgrounds itself.
-- If port 3000 is busy on your workstation, change only the left number:
-  `LocalForward 3001 127.0.0.1:3000`, then browse to `127.0.0.1:3001`. The host
-  check only cares that the hostname is loopback, not the port.
+- To open the tunnel without attaching a shell, add `-f -N`:
+  `ssh -f -N -L 3000:127.0.0.1:3000 you@your-server`. It backgrounds itself.
+- If port 3000 is busy on your workstation, change only the first number:
+  `-L 3001:127.0.0.1:3000`, then browse to `127.0.0.1:3001`. The host check only
+  cares that the hostname is loopback, not the port.
+
+### Optional: save it as an alias
+
+Nothing below is required. If you connect often and would rather type `ssh wire`,
+add an entry to your SSH config — `~/.ssh/config`, or
+`C:\Users\<you>\.ssh\config` on Windows:
+
+```
+Host wire
+    HostName 192.168.1.100
+    User youruser
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+    LocalForward 3000 127.0.0.1:3000
+```
+
+Give it its own entry rather than adding `LocalForward` to a host you use for
+everything, or a second concurrent session will print
+`bind: Address already in use`.
 
 > **Do not** put this behind Nginx or Caddy to make it easier to reach unless you
 > add real authentication in front of it. Removing the loopback restriction

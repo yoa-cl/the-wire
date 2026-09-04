@@ -290,7 +290,67 @@ somewhere you would be comfortable storing a password file.
 
 ---
 
-## 10. Troubleshooting
+## 10. Starting over
+
+Useful when a demo has filled the dashboard with data you no longer want. All of
+these need `sudo`, because the container writes those files as root.
+
+Use `down` and `up`, not `stop` and `start`. Deleting the directory underneath a
+container that still exists can leave it holding a stale mount.
+
+**Everything — back to the first-run state:**
+
+```bash
+cd /opt/stacks/the-wire && docker compose down && sudo rm -rf data && docker compose up -d
+```
+
+**Keep settings and API keys, drop everything collected:**
+
+```bash
+docker compose stop
+sudo rm -f data/snapshots.json data/industry-snapshots.json data/control-center.sqlite*
+docker compose start
+```
+
+`settings.json` survives, so accounts, feeds, provider keys and the Gmail
+connection stay configured. The `*` matters: SQLite leaves `-wal` and `-shm`
+files beside the main database.
+
+**Audience history only:**
+
+```bash
+docker compose stop
+sudo rm -f data/snapshots.json
+docker compose start
+```
+
+> Manual entries are recorded twice: the number goes into `snapshots.json`, and a
+> ledger row goes into SQLite. Deleting only `snapshots.json` leaves that row, so
+> re-entering a number for the same account on the same day returns *already has
+> a manual entry for today* with a **Replace today's entry** button. Click
+> replace, or delete the `.sqlite` files too if you are testing manual entry
+> repeatedly.
+
+### Resetting repeatedly
+
+If you are iterating on a demo, snapshot a configured-but-empty state once:
+
+```bash
+docker compose stop && sudo cp -a data ~/wire-baseline && docker compose start
+```
+
+Then a reset returns you there instead of to the setup wizard:
+
+```bash
+cd /opt/stacks/the-wire && docker compose down && sudo rm -rf data && sudo cp -a ~/wire-baseline data && docker compose up -d
+```
+
+Keep the baseline outside the repository directory so it does not show up in
+`git status`.
+
+---
+
+## 11. Troubleshooting
 
 | Symptom | Cause and fix |
 | --- | --- |

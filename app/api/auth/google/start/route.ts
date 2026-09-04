@@ -1,20 +1,22 @@
 import { randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { isGoogleOAuthClientId } from "@/lib/google-oauth";
+import { requestOrigin } from "@/lib/server/request-origin";
 import { readSettings } from "@/lib/server/settings";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const settings = await readSettings();
+  const origin = requestOrigin(request);
   if (!settings.newsletters.googleClientId || !settings.newsletters.googleClientSecret) {
-    return NextResponse.redirect(new URL("/?tab=settings&section=newsletters&error=oauth-config", request.url));
+    return NextResponse.redirect(new URL("/?tab=settings&section=newsletters&error=oauth-config", origin));
   }
   if (!isGoogleOAuthClientId(settings.newsletters.googleClientId)) {
-    return NextResponse.redirect(new URL("/?tab=settings&section=newsletters&error=oauth-client-id", request.url));
+    return NextResponse.redirect(new URL("/?tab=settings&section=newsletters&error=oauth-client-id", origin));
   }
   const state = randomBytes(24).toString("hex");
-  const redirectUri = new URL("/api/auth/google/callback", request.url).toString();
+  const redirectUri = new URL("/api/auth/google/callback", origin).toString();
   const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   url.search = new URLSearchParams({
     client_id: settings.newsletters.googleClientId,

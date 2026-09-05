@@ -292,6 +292,37 @@ because exactly one trusted person can reach the settings page; that premise is
 what makes it safe, not the code. Adding authentication is the mitigation, not a
 conflict.
 
+### Reasoning models are asked not to think
+
+**Problem.** With a reasoning model selected, AI curation failed with *"Ollama ·
+local stopped before completing its answer"* and fell back to local ranking. The
+loaded context was 128,000 tokens, so the input was never the constraint.
+
+The output was. `runConfiguredAi` allows at most 5,000 output tokens for industry
+curation, and Ollama bills a model's hidden reasoning against `num_predict` —
+while returning it in a separate `thinking` field the app never reads. A
+reasoning model can therefore spend the entire allowance thinking and be cut off
+before finishing its JSON. The app correctly refuses to keep a truncated answer,
+so the whole run is discarded.
+
+Measured on `qwen3.6:35b`, asked to reply with the single word "OK":
+
+| | thinking on | `think: false` |
+| --- | --- | --- |
+| output tokens | 134 | **2** |
+| wall time | 6.9s | **0.098s** |
+
+Every one of those reasoning tokens was generated and then thrown away.
+
+**Change.** `lib/server/ai.ts` sends `think: false` on Ollama chat requests. If
+Ollama answers `400` — older builds and models without a thinking mode reject the
+parameter — it retries once without it, so a non-reasoning setup behaves exactly
+as it did before. LM Studio is untouched.
+
+This is not a judgement that reasoning is unhelpful. It is that this particular
+caller wants compact JSON, discards everything else, and enforces a hard output
+ceiling; under those three constraints, reasoning is pure cost.
+
 ---
 
 ## What shipped
@@ -321,6 +352,7 @@ Changed files, kept as small as possible:
 | `lib/server/database.ts` | One line, registering the new table |
 | `app/api/auth/google/*/route.ts` | Redirect URIs built from the Host header |
 | `lib/ai-providers.ts` | AI endpoint host restriction lifted |
+| `lib/server/ai.ts` | `think: false` for Ollama, with a 400 fallback |
 | `tests/ai-providers.test.ts` | Asserts the new AI endpoint boundary |
 
 `lib/server/audience.ts` was deliberately left alone beyond making five existing

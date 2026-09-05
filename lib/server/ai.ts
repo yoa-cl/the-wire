@@ -6,7 +6,7 @@ import {
   type StoredSettings,
 } from "@/lib/server/settings";
 import { AI_PROVIDER_LABELS, DEFAULT_AI_MODELS, aiSupportsWebSearch, cleanAiModelOverride, isLocalAiProvider, localAiBaseUrl } from "@/lib/ai-providers";
-import { aiProviderJson } from "@/lib/ai-provider-http";
+import { AiProviderRequestError, aiProviderJson } from "@/lib/ai-provider-http";
 import { discoverAiModels } from "@/lib/server/ai-models";
 import { assertLocalAiContext } from "@/lib/ai-local-context";
 
@@ -244,19 +244,44 @@ async function runLocalAi(settings: StoredSettings, provider: "lmstudio" | "olla
   const outputTokens = boundedTokens(options.maxOutputTokens);
   const contextLength = assertLocalAiContext(provider, loadedContextLength, options.prompt, outputTokens);
   const root = localAiBaseUrl(provider, settings.ai.localBaseUrls[provider]);
-  const payload = await providerFetch(provider, `${root}${provider === "lmstudio" ? "/v1/chat/completions" : "/api/chat"}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(key ? { Authorization: `Bearer ${key}` } : {}) },
-    body: JSON.stringify({
-      model,
-      messages: [{ role: "user", content: options.prompt }],
-      stream: false,
-      ...(provider === "lmstudio"
-        ? { max_tokens: outputTokens }
-        // Omit keep_alive: retain Ollama's user-configured server/runner lifetime.
-        : { options: { num_predict: outputTokens, num_ctx: contextLength }, truncate: false, shift: false }),
-    }),
+  const endpoint = `${root}${provider === "lmstudio" ? "/v1/chat/completions" : "/api/chat"}`;
+  const headers = { "Content-Type": "application/json", ...(key ? { Authorization: `Bearer ${key}` } : {}) };
+  // The Wire: a reasoning model bills its hidden thinking against num_predict but
+  // returns it in a separate `thinking` field this app never reads. Left on, the
+  // model can spend the whole output allowance reasoning and be cut off before it
+  // finishes the JSON, which surfaces as "stopped before completing its answer".
+  const requestBody = (thinking?: boolean) => JSON.stringify({
+    model,
+    messages: [{ role: "user", content: options.prompt }],
+    stream: false,
+    ...(provider === "lmstudio"
+      ? { max_tokens: outputTokens }
+      // Omit keep_alive: retain Ollama's user-configured server/runner lifetime.
+      : {
+          ...(thinking === undefined ? {} : { think: thinking }),
+          options: { num_predict: outputTokens, num_ctx: contextLength },
+          truncate: false,
+          shift: false,
+        }),
   });
+
+  const send = (thinking?: boolean) =>
+    providerFetch(provider, endpoint, { method: "POST", headers, body: requestBody(thinking) });
+
+  let payload: Record<string, unknown>;
+  if (provider === "ollama") {
+    try {
+      payload = await send(false);
+    } catch (error) {
+      // Ollama builds that predate the flag, and models without a thinking mode,
+      // reject the parameter with a 400. Retry once without it so a non-reasoning
+      // setup behaves exactly as it did before.
+      if (!(error instanceof AiProviderRequestError) || error.status !== 400) throw error;
+      payload = await send();
+    }
+  } else {
+    payload = await send();
+  }
   const choices = Array.isArray(payload.choices) ? payload.choices : [];
   const finish = provider === "lmstudio"
     ? (choices[0] as { finish_reason?: unknown } | undefined)?.finish_reason

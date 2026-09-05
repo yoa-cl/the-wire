@@ -416,6 +416,8 @@ footer { width: min(1380px, calc(100vw - 48px)); min-height: 58px; display: flex
 .source-editor-head > span { color: var(--muted); font-size: 8px; }
 .ai-key-row { display: grid; grid-template-columns: minmax(130px, .55fr) minmax(200px, 1fr) auto; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--line); }.ai-key-row > div { display: flex; flex-direction: column; gap: 3px; }.ai-key-row b { font-size: 9px; }.ai-key-row small { color: var(--muted); font-size: 8px; }.ai-key-row > input { width: 100%; height: 38px; padding: 0 10px; border: 1px solid var(--line-dark); border-radius: 7px; background: var(--paper); color: var(--ink); font-size: 9px; }.ai-key-row > input:focus { border-color: var(--coral); box-shadow: 0 0 0 3px var(--coral-soft); outline: 0; }
 .source-edit-row { display: grid; grid-template-columns: .7fr 1.3fr auto auto auto; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); align-items: center; }
+/* Every control stays on row one; only a test result is allowed onto row two. */
+.source-edit-row > input, .source-edit-row > label, .source-edit-row > button { grid-row: 1; }
 .source-pause { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 9px; white-space: nowrap; cursor: pointer; }
 .source-pause input { width: 14px; height: 14px; margin: 0; padding: 0; accent-color: var(--coral); cursor: pointer; }
 .source-edit-row.is-paused > input, .source-edit-row.is-paused > label { opacity: .55; }.source-edit-row button, .account-card-head button { width: 34px; height: 34px; align-self: center; display: grid; place-items: center; border: 0; background: transparent; color: var(--faint); cursor: pointer; }
@@ -452,6 +454,8 @@ footer { width: min(1380px, calc(100vw - 48px)); min-height: 58px; display: flex
   .settings-nav { grid-template-columns: repeat(3, 1fr); }
   .settings-panel { padding: 19px; }
   .source-edit-row, .credential-grid, .ai-key-row { grid-template-columns: 1fr; }
+  /* One column: let everything stack again instead of piling onto row one. */
+  .source-edit-row > input, .source-edit-row > label, .source-edit-row > button { grid-row: auto; }
   .source-edit-row button { justify-self: end; }
   .oauth-actions { align-items: flex-start; flex-direction: column; }
   .connection-card { grid-template-columns: auto 1fr; }

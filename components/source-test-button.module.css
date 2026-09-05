@@ -4,15 +4,15 @@
 
 /* Two classes deep so this wins over the editor's generic `button` rule, which
    forces every button in a source row to a 34px square icon. */
-.wrap .button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto; height: auto; min-height: 34px; align-self: center; padding: 6px 12px; border: 1px solid var(--line-dark); border-radius: 7px; background: var(--card); color: var(--ink); font-size: 10px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.wrap .button { grid-row: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto; height: auto; min-height: 34px; align-self: center; padding: 6px 12px; border: 1px solid var(--line-dark); border-radius: 7px; background: var(--card); color: var(--ink); font-size: 10px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
 .wrap .button:hover:not(:disabled) { border-color: var(--teal); background: var(--deep-hover); }
 .wrap .button:disabled { opacity: .5; cursor: not-allowed; }
 
-/* The result spans the whole editor row so a long endpoint has room to wrap.
-   `order` keeps it last in grid auto-placement: without it the full-width result
-   cannot fit beside the button, claims its own row early, and pushes Pause and
-   delete down to a third row. */
-.result { order: 1; grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 6px; margin: 0 0 2px; font-size: 10px; line-height: 1.5; }
+/* The result is pinned to row two spanning the full width. Explicit placement,
+   not ordering: left to auto-placement, a full-width item cannot fit beside the
+   button, claims a row early, and pushes Pause and delete down a third row —
+   which also collapses the empty columns and stretches the two inputs. */
+.result { order: 1; grid-row: 2; grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 6px; margin: 0 0 2px; font-size: 10px; line-height: 1.5; }
 .result svg { flex: 0 0 auto; margin-top: 2px; }
 .ok { color: var(--positive); }
 .bad { color: var(--danger); }
@@ -21,6 +21,12 @@
 
 .spin { animation: sourceTestSpin 1s linear infinite; }
 @keyframes sourceTestSpin { to { transform: rotate(360deg); } }
+
+/* Single-column layout: stack in document order rather than forcing rows. */
+@media (max-width: 620px) {
+  .wrap .button { grid-row: auto; }
+  .result { order: 0; grid-row: auto; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .spin { animation: none; }

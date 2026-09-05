@@ -8,8 +8,11 @@
 .wrap .button:hover:not(:disabled) { border-color: var(--teal); background: var(--deep-hover); }
 .wrap .button:disabled { opacity: .5; cursor: not-allowed; }
 
-/* The result spans the whole editor row so a long endpoint has room to wrap. */
-.result { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 6px; margin: 0 0 2px; font-size: 10px; line-height: 1.5; }
+/* The result spans the whole editor row so a long endpoint has room to wrap.
+   `order` keeps it last in grid auto-placement: without it the full-width result
+   cannot fit beside the button, claims its own row early, and pushes Pause and
+   delete down to a third row. */
+.result { order: 1; grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 6px; margin: 0 0 2px; font-size: 10px; line-height: 1.5; }
 .result svg { flex: 0 0 auto; margin-top: 2px; }
 .ok { color: var(--positive); }
 .bad { color: var(--danger); }

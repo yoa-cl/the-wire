@@ -89,8 +89,12 @@ async function collectIndustry() {
   }
   const snapshots = await readIndustrySnapshots();
   const nextSnapshots = { ...snapshots };
+  // The Wire: a paused source is skipped entirely rather than deleted, so a site
+  // that cannot succeed stops costing a homepage fetch, fourteen feed probes,
+  // robots.txt and sitemap lookups on every cycle and every restart.
+  const activeSources = settings.industry.sources.filter((source) => !source.paused);
   const [sourceResults, topicResult] = await Promise.all([
-    Promise.allSettled(settings.industry.sources.map((source) => readSource(source, snapshots[source.id]))),
+    Promise.allSettled(activeSources.map((source) => readSource(source, snapshots[source.id]))),
     settings.industry.keywords.length ? readTopicNews(settings.industry.keywords) : Promise.resolve({ items: [] as LiveStory[], errors: [] as string[], endpoint: "", queryCount: 0, successfulQueries: 0 }),
   ]);
   const siteItems: LiveStory[] = [];
@@ -99,15 +103,21 @@ async function collectIndustry() {
   let snapshotsUpdated = false;
   sourceResults.forEach((result, index) => {
     if (result.status === "fulfilled") {
-      const scope = sourceScopes.get(settings.industry.sources[index].id)!;
+      const scope = sourceScopes.get(activeSources[index].id)!;
       siteItems.push(...result.value.items.map((item) => ({ ...item, collectionScope: scope })));
       sourceStatuses.push(result.value.status);
       if (result.value.snapshot) {
-        nextSnapshots[settings.industry.sources[index].id] = result.value.snapshot;
+        nextSnapshots[activeSources[index].id] = result.value.snapshot;
         snapshotsUpdated = true;
       }
     }
-    else errors.push(`${settings.industry.sources[index].name || settings.industry.sources[index].url}: ${result.reason instanceof Error ? result.reason.message : "Failed to read source"}`);
+    else {
+      // The Wire: names are not unique — two entries can both be called "a16z" —
+      // so the failing URL goes on a second line for the UI to render quietly.
+      const failed = activeSources[index];
+      const reason = result.reason instanceof Error ? result.reason.message : "Failed to read source";
+      errors.push(`${failed.name || failed.url}: ${reason}\n${failed.url}`);
+    }
   });
   if (snapshotsUpdated) await writeIndustrySnapshots(nextSnapshots);
   if (settings.industry.keywords.length) {

@@ -2,6 +2,12 @@ export type IndustrySource = {
   id: string;
   name: string;
   url: string;
+  /**
+   * The Wire: skip this source during collection without deleting it. A source
+   * that cannot succeed still costs a homepage fetch, fourteen feed probes,
+   * robots.txt and sitemap lookups on every cycle and every restart.
+   */
+  paused?: boolean;
 };
 
 export type AiProvider = "none" | "openai" | "anthropic" | "gemini" | "xai" | "lmstudio" | "ollama";

@@ -1,0 +1,25 @@
+/* The Wire: on-demand check for a single industry source. */
+
+.wrap { display: contents; }
+
+/* Two classes deep so this wins over the editor's generic `button` rule, which
+   forces every button in a source row to a 34px square icon. */
+.wrap .button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto; height: auto; min-height: 34px; align-self: center; padding: 6px 12px; border: 1px solid var(--line-dark); border-radius: 7px; background: var(--card); color: var(--ink); font-size: 10px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: border-color .15s ease, background .15s ease; }
+.wrap .button:hover:not(:disabled) { border-color: var(--teal); background: var(--deep-hover); }
+.wrap .button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* The result spans the whole editor row so a long endpoint has room to wrap. */
+.result { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 6px; margin: 0 0 2px; font-size: 10px; line-height: 1.5; }
+.result svg { flex: 0 0 auto; margin-top: 2px; }
+.ok { color: var(--positive); }
+.bad { color: var(--danger); }
+
+.endpoint { display: block; margin-top: 1px; color: var(--faint); font-family: var(--mono); font-size: 9px; word-break: break-all; }
+
+.spin { animation: sourceTestSpin 1s linear infinite; }
+@keyframes sourceTestSpin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation: none; }
+  .button { transition: none; }
+}

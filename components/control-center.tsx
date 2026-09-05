@@ -76,6 +76,7 @@ import { AiProviderSettings } from "@/components/ai-provider-settings";
 import { DailySnapshot } from "@/components/daily-snapshot";
 import { AudienceInsights } from "@/components/audience-insights";
 import type { AudienceManualEntry } from "@/components/audience-refresh-actions";
+import { SourceTestButton } from "@/components/source-test-button";
 import type { AudienceHistorySeries } from "@/lib/audience-charts";
 import { AI_PROVIDER_LABELS, DEFAULT_LOCAL_AI_URLS, isAiReady } from "@/lib/ai-providers";
 import { sortFeedStories, selectNewsletterTopics, newsletterSourceOptions } from "@/lib/feed-priority";
@@ -323,16 +324,40 @@ function SetupEmpty({
 }
 
 function ErrorNotice({ errors }: { errors: string[] }) {
-  if (!errors.length) return null;
+  // The Wire: dismissal is keyed to the exact set of errors, so hiding the
+  // notice never hides a *different* failure later — a new collection produces a
+  // new signature and the notice returns on its own.
+  const [dismissed, setDismissed] = useState("");
+  const signature = errors.join(" ");
+  if (!errors.length || dismissed === signature) return null;
   return (
     <div className="error-notice">
       <CircleAlert size={17} />
       <div>
         <b>Some sources could not be read</b>
-        {errors.map((error) => (
-          <p key={error}>{error}</p>
-        ))}
+        {errors.map((error) => {
+          // A trailing line is supporting detail — the failing URL — shown
+          // quietly beneath the message rather than crowding it.
+          const [message, ...detail] = error.split("\n");
+          return (
+            <p key={error}>
+              {message}
+              {detail.map((line) => (
+                <small key={line} className="fine-print">{line}</small>
+              ))}
+            </p>
+          );
+        })}
       </div>
+      <button
+        type="button"
+        className="error-notice-dismiss"
+        onClick={() => setDismissed(signature)}
+        aria-label="Hide this notice until the next check"
+        title="Hide until the next check"
+      >
+        <X size={15} />
+      </button>
     </div>
   );
 }
@@ -2606,7 +2631,7 @@ function SettingsView({
                   </button>
                 </div>
                 {draft.industry.sources.map((source) => (
-                  <div className="source-edit-row" key={source.id}>
+                  <div className={classNames("source-edit-row", source.paused && "is-paused")} key={source.id}>
                     <SettingsInput
                       aria-label="Source name"
                       value={source.name}
@@ -2643,6 +2668,27 @@ function SettingsView({
                       }
                       placeholder="https://example.com"
                     />
+                    <SourceTestButton url={source.url} name={source.name} />
+                    <label className="source-pause" title="Skip this source during collection without deleting it">
+                      <input
+                        type="checkbox"
+                        checked={source.paused === true}
+                        onChange={(event) =>
+                          setDraft((value) => ({
+                            ...value,
+                            industry: {
+                              ...value.industry,
+                              sources: value.industry.sources.map((item) =>
+                                item.id === source.id
+                                  ? { ...item, paused: event.target.checked }
+                                  : item,
+                              ),
+                            },
+                          }))
+                        }
+                      />
+                      Pause
+                    </label>
                     <button
                       type="button"
                       onClick={() =>

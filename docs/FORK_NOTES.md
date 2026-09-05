@@ -323,6 +323,38 @@ This is not a judgement that reasoning is unhelpful. It is that this particular
 caller wants compact JSON, discards everything else, and enforces a hard output
 ceiling; under those three constraints, reasoning is pure cost.
 
+### Industry sources can be tested and paused
+
+**Problem.** A single source is not a single request. `readSource` fetches the
+homepage, then probes up to fourteen candidate feed URLs, then `robots.txt`, then
+sitemap locations — 15–20 requests to one domain in quick succession. A site with
+no feed never succeeds, so it pays that full probe on every four-hour cycle *and*
+five seconds after every restart, forever.
+
+That produced `HTTP 429 Too Many Requests` from several sites during ordinary
+development, and the only feedback about a broken source was a line in an error
+box hours later. It is the same burst-traffic problem the fork was created to fix
+for audience scraping, in a different collector.
+
+**Changes.**
+
+- **Test a source before saving it.** `POST /api/settings/test-source` runs the
+  same discovery against one URL and reports what it found — feed or sitemap,
+  the endpoint, the item count — or the exact failure. It reads and writes
+  nothing, and fetches through the same guarded path as collection, which refuses
+  private and loopback addresses. `components/source-test-button.tsx` puts it
+  beside each source in Settings.
+- **Pause a source.** `IndustrySource` gains an optional `paused` flag. A paused
+  source is skipped by the collector, stays in the list, and is included in the
+  cache key so pausing takes effect immediately. Chosen over the originally
+  suggested "skip next scan": a one-shot skip clears itself, so a permanently
+  broken source silently resumes costing 15 requests a cycle.
+- **Failing URLs are shown.** Source names are not unique — two entries can both
+  be called "a16z" — so the error line now carries the URL beneath it.
+- **The error notice can be dismissed.** Dismissal is keyed to the exact set of
+  errors, so hiding it never hides a later, different failure: a new collection
+  produces a new signature and the notice returns by itself.
+
 ---
 
 ## What shipped
@@ -339,6 +371,9 @@ with:
 | `components/audience-refresh-actions.tsx` | Global and per-account controls, smart input |
 | `components/audience-refresh-actions.module.css` | Its styles |
 | `lib/server/request-origin.ts` | Builds URLs from the Host header, not the bound address |
+| `app/api/settings/test-source/route.ts` | Checks one industry source on demand |
+| `components/source-test-button.tsx` | Its button and result, per source row |
+| `components/source-test-button.module.css` | Its styles |
 
 Changed files, kept as small as possible:
 

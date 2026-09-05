@@ -9,7 +9,8 @@ type FeedSettings = Pick<PublicSettings, "industry" | "mentions"> & {
 export function industryCacheScope(settings: FeedSettings) {
   return collectionScope("industry-response-v1", [
     settings.industry.description,
-    ...settings.industry.sources.map((source) => `${source.id}:${source.url}`),
+    // Pausing changes what a collection would return, so it must change the key.
+    ...settings.industry.sources.map((source) => `${source.id}:${source.url}${source.paused ? ":paused" : ""}`),
     ...settings.industry.keywords.map((keyword) => `topic:${keyword}`),
     ...settings.industry.excludedTerms.map((term) => `exclude:${term}`),
     `limit:${settings.industry.dailyLimit}`,

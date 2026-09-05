@@ -317,6 +317,7 @@ function cleanIndustrySources(sources: SettingsUpdate["industry"]["sources"]) {
         id: source.id.trim() || randomUUID(),
         name: source.name.trim() || url.hostname.replace(/^www\./, ""),
         url: url.toString(),
+        ...(source.paused === true ? { paused: true } : {}),
       },
     ];
   });
